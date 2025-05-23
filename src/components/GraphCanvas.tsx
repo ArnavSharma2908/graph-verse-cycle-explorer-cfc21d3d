@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GraphControls } from './GraphControls';
 import { EdgeInputPanel } from './EdgeInputPanel';
@@ -170,9 +169,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
   // Handle edge click
   const handleEdgeClick = (edgeId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedEdge(edgeId);
-    setSelectedNode(null);
-    setFirstSelectedNode(null);
+    // Don't deselect if clicking on the same edge
+    if (selectedEdge !== edgeId) {
+      setSelectedEdge(edgeId);
+      setSelectedNode(null);
+      setFirstSelectedNode(null);
+    }
   };
 
   // Rename node

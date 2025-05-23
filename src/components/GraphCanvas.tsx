@@ -31,6 +31,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [firstSelectedNode, setFirstSelectedNode] = useState<string | null>(null);
   const [cycleHighlight, setCycleHighlight] = useState<string[]>([]);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -43,8 +44,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
 
   // Calculate node degree
   const calculateDegree = useCallback((nodeId: string) => {
-    return edges.filter(edge => edge.source === nodeId || edge.target === nodeId).length;
-  }, [edges]);
+    const nodeName = nodes.find(n => n.id === nodeId)?.name;
+    if (!nodeName) return 0;
+    return edges.filter(edge => edge.source === nodeName || edge.target === nodeName).length;
+  }, [edges, nodes]);
 
   // Update node degrees
   useEffect(() => {
@@ -73,6 +76,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
       
       setNodes(prev => [...prev, newNode]);
       toast.success(`Node "${newNode.name}" created!`);
+    }
+  };
+
+  // Handle canvas click to deselect
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.target === canvasRef.current) {
+      setSelectedNode(null);
+      setSelectedEdge(null);
+      setFirstSelectedNode(null);
     }
   };
 
@@ -119,16 +131,35 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
     }
   }, [draggedNode, handleMouseMove, handleMouseUp]);
 
-  // Handle node click
-  const handleNodeClick = (nodeId: string) => {
-    setSelectedNode(nodeId);
-    setSelectedEdge(null);
+  // Handle node click for selection and edge creation
+  const handleNodeClick = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (firstSelectedNode && firstSelectedNode !== nodeId) {
+      // Create edge between first selected node and current node
+      const sourceNode = nodes.find(n => n.id === firstSelectedNode);
+      const targetNode = nodes.find(n => n.id === nodeId);
+      
+      if (sourceNode && targetNode) {
+        createEdge(sourceNode.name, targetNode.name);
+      }
+      
+      setFirstSelectedNode(null);
+      setSelectedNode(null);
+    } else {
+      // Select node
+      setSelectedNode(nodeId);
+      setSelectedEdge(null);
+      setFirstSelectedNode(nodeId);
+    }
   };
 
   // Handle edge click
-  const handleEdgeClick = (edgeId: string) => {
+  const handleEdgeClick = (edgeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedEdge(edgeId);
     setSelectedNode(null);
+    setFirstSelectedNode(null);
   };
 
   // Rename node
@@ -143,9 +174,23 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
       return false;
     }
     
+    const oldNode = nodes.find(n => n.id === nodeId);
+    if (!oldNode) return false;
+    
+    const oldName = oldNode.name;
+    
+    // Update node name
     setNodes(prev => prev.map(node => 
       node.id === nodeId ? { ...node, name: newName } : node
     ));
+    
+    // Update all edges that reference this node
+    setEdges(prev => prev.map(edge => ({
+      ...edge,
+      source: edge.source === oldName ? newName : edge.source,
+      target: edge.target === oldName ? newName : edge.target
+    })));
+    
     toast.success(`Node renamed to "${newName}"`);
     return true;
   };
@@ -153,10 +198,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
   // Delete node
   const deleteNode = (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
     setNodes(prev => prev.filter(n => n.id !== nodeId));
-    setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+    setEdges(prev => prev.filter(e => e.source !== node.name && e.target !== node.name));
     setSelectedNode(null);
-    toast.success(`Node "${node?.name}" deleted!`);
+    setFirstSelectedNode(null);
+    toast.success(`Node "${node.name}" deleted!`);
   };
 
   // Create edge
@@ -249,6 +297,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
     setCycleHighlight([]);
     setSelectedNode(null);
     setSelectedEdge(null);
+    setFirstSelectedNode(null);
     toast.success('Graph cleared!');
   };
 
@@ -309,14 +358,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
           <div className="flex-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <svg
               ref={canvasRef}
-              className="w-full h-full cursor-crosshair"
+              className="w-full h-full"
               onDoubleClick={handleCanvasDoubleClick}
+              onClick={handleCanvasClick}
             >
               {/* Grid pattern */}
               <defs>
                 <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                   <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f1f5f9" strokeWidth="1"/>
                 </pattern>
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="7"
+                  refX="9"
+                  refY="3.5"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#374151" />
+                </marker>
               </defs>
               <rect width="100%" height="100%" fill="url(#grid)" />
               
@@ -329,27 +389,32 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
                 const isHighlighted = cycleHighlight.includes(edge.source) && cycleHighlight.includes(edge.target);
                 const isSelected = selectedEdge === edge.id;
                 
+                // Calculate edge position to avoid overlapping with nodes
+                const dx = targetNode.x - sourceNode.x;
+                const dy = targetNode.y - sourceNode.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const unitX = dx / length;
+                const unitY = dy / length;
+                
+                const nodeRadius = 20;
+                const startX = sourceNode.x + unitX * nodeRadius;
+                const startY = sourceNode.y + unitY * nodeRadius;
+                const endX = targetNode.x - unitX * nodeRadius;
+                const endY = targetNode.y - unitY * nodeRadius;
+                
                 return (
-                  <g key={edge.id}>
-                    <line
-                      x1={sourceNode.x}
-                      y1={sourceNode.y}
-                      x2={targetNode.x}
-                      y2={targetNode.y}
-                      stroke={isHighlighted ? '#ef4444' : `hsl(${(index * 137.5) % 360}, 70%, 50%)`}
-                      strokeWidth={isSelected ? 4 : isHighlighted ? 3 : 2}
-                      className="cursor-pointer hover:stroke-width-3 transition-all"
-                      onClick={() => handleEdgeClick(edge.id)}
-                    />
-                    {graphType === 'directed' && (
-                      <polygon
-                        points={`${targetNode.x - 5},${targetNode.y - 5} ${targetNode.x + 5},${targetNode.y} ${targetNode.x - 5},${targetNode.y + 5}`}
-                        fill={isHighlighted ? '#ef4444' : `hsl(${(index * 137.5) % 360}, 70%, 50%)`}
-                        className="cursor-pointer"
-                        onClick={() => handleEdgeClick(edge.id)}
-                      />
-                    )}
-                  </g>
+                  <line
+                    key={edge.id}
+                    x1={startX}
+                    y1={startY}
+                    x2={endX}
+                    y2={endY}
+                    stroke={isHighlighted ? '#ef4444' : `hsl(${(index * 137.5) % 360}, 70%, 50%)`}
+                    strokeWidth={isSelected ? 4 : isHighlighted ? 3 : 2}
+                    className="cursor-pointer hover:stroke-width-3 transition-all"
+                    onClick={(e) => handleEdgeClick(edge.id, e)}
+                    markerEnd={graphType === 'directed' ? 'url(#arrowhead)' : undefined}
+                  />
                 );
               })}
               
@@ -357,19 +422,19 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
               {nodes.map((node) => {
                 const isHighlighted = cycleHighlight.includes(node.name);
                 const isSelected = selectedNode === node.id;
+                const isFirstSelected = firstSelectedNode === node.id;
                 
                 return (
                   <g key={node.id}>
                     <circle
                       cx={node.x}
                       cy={node.y}
-                      r={isSelected ? 25 : 20}
+                      r={isSelected || isFirstSelected ? 25 : 20}
                       fill={isHighlighted ? '#fecaca' : getNodeColor(node.degree)}
-                      stroke={isSelected ? '#3b82f6' : isHighlighted ? '#ef4444' : '#6b7280'}
-                      strokeWidth={isSelected ? 3 : 2}
-                      className="cursor-pointer hover:r-22 transition-all animate-pulse"
-                      style={{ animationDuration: '3s' }}
-                      onClick={() => handleNodeClick(node.id)}
+                      stroke={isSelected || isFirstSelected ? '#3b82f6' : isHighlighted ? '#ef4444' : '#6b7280'}
+                      strokeWidth={isSelected || isFirstSelected ? 3 : 2}
+                      className="cursor-pointer transition-all"
+                      onClick={(e) => handleNodeClick(node.id, e)}
                       onMouseDown={(e) => handleMouseDown(e, node.id)}
                     />
                     <text

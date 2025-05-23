@@ -1,7 +1,6 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -31,13 +30,12 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   onClearGraph,
   onReset,
 }) => {
-  const [renameName, setRenameName] = useState('');
-
   const handleRename = () => {
-    if (!selectedNode || !renameName.trim()) return;
+    if (!selectedNode) return;
     
-    if (onRenameNode(selectedNode, renameName.trim())) {
-      setRenameName('');
+    const newName = prompt('Enter new name:');
+    if (newName && newName.trim()) {
+      onRenameNode(selectedNode, newName.trim());
     }
   };
 
@@ -61,31 +59,22 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
         <div className="flex flex-wrap gap-3 items-center">
           {/* Node Controls */}
           {selectedNode && (
-            <>
-              <div className="flex gap-2 items-center bg-blue-50 p-2 rounded-lg">
-                <Input
-                  placeholder="New name..."
-                  value={renameName}
-                  onChange={(e) => setRenameName(e.target.value)}
-                  className="w-32"
-                  onKeyPress={(e) => e.key === 'Enter' && handleRename()}
-                />
-                <Button
-                  onClick={handleRename}
-                  size="sm"
-                  className="bg-blue-500 hover:bg-blue-600"
-                >
-                  ✏️ Rename
-                </Button>
-                <Button
-                  onClick={() => onDeleteNode(selectedNode)}
-                  size="sm"
-                  variant="destructive"
-                >
-                  🗑️ Delete Node
-                </Button>
-              </div>
-            </>
+            <div className="flex gap-2 items-center bg-blue-50 p-2 rounded-lg">
+              <Button
+                onClick={handleRename}
+                size="sm"
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                ✏️ Rename
+              </Button>
+              <Button
+                onClick={() => onDeleteNode(selectedNode)}
+                size="sm"
+                variant="destructive"
+              >
+                🗑️ Delete Node
+              </Button>
+            </div>
           )}
 
           {/* Edge Controls */}
@@ -139,7 +128,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
 
         {!selectedNode && !selectedEdge && (
           <p className="text-sm text-gray-600 mt-3">
-            💡 <strong>Tip:</strong> Double-click on empty space to create nodes. Click nodes/edges to select them.
+            💡 <strong>Tip:</strong> Double-click on empty space to create nodes. Click two nodes to create an edge between them.
           </p>
         )}
       </CardContent>

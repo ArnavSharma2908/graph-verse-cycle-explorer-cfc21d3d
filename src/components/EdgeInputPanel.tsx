@@ -70,10 +70,10 @@ export const EdgeInputPanel: React.FC<EdgeInputPanelProps> = ({
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="space-y-2">
           <Button
             onClick={handleCreateEdge}
-            className="flex-1 bg-green-500 hover:bg-green-600"
+            className="w-full bg-green-500 hover:bg-green-600"
             disabled={!edgeInput.trim()}
           >
             ➕ Create Edge
@@ -81,7 +81,7 @@ export const EdgeInputPanel: React.FC<EdgeInputPanelProps> = ({
           <Button
             onClick={handleDeleteEdge}
             variant="destructive"
-            className="flex-1"
+            className="w-full"
             disabled={!edgeInput.trim()}
           >
             ➖ Delete Edge

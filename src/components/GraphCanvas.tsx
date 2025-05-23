@@ -38,7 +38,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
   const [isDragging, setIsDragging] = useState(false);
   const canvasRef = useRef<SVGSVGElement>(null);
 
-  // Generate unique node name
+  // Generate unique node name in chronological order
   const generateNodeName = useCallback(() => {
     return GraphUtils.generateUniqueName(nodes.map(n => n.name));
   }, [nodes]);
@@ -62,6 +62,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
 
   // Handle canvas double click to create node
   const handleCanvasDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (e.target === canvasRef.current) {
       const rect = canvasRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -376,9 +379,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({ graphType, onReset }) 
           <div className="flex-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <svg
               ref={canvasRef}
-              className="w-full h-full cursor-default"
+              className="w-full h-full select-none"
               onDoubleClick={handleCanvasDoubleClick}
               onClick={handleCanvasClick}
+              style={{ userSelect: 'none' }}
             >
               {/* Grid pattern */}
               <defs>

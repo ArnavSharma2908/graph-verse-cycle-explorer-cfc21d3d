@@ -51,5 +51,5 @@ npm install
 # Step 4: Start the development server
 npm run dev
 
-# Visit http://localhost:5173 to view the application
+# Visit localhost as prompted on terminal/cmd to view the application
 ```

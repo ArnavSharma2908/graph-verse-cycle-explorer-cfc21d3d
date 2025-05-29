@@ -10,7 +10,7 @@
 **Subject:** Discrete Mathematical Structures  
 
 **Project URL:** [Cycle Detection Visualizer on Lovable](https://lovable.dev/projects/d325c68e-a9d2-4573-9859-4fbd28c7f0a5)  
-**YouTube Video:** [Watch Demo on YouTube](https://youtu.be/sample-link-here)
+**YouTube Video:** [Watch Demo on YouTube](https://youtu.be/lDrDSyUs-kU)
 
 ---
 

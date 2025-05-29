@@ -34,16 +34,16 @@
 
 You can run this project in multiple ways:
 
-### 1. 🔧 Using Your Local Machine
+### 🔧 Using Your Local Machine
 
 > Ensure you have **Node.js** and **npm** installed. You can install Node.js via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
 # Step 1: Clone the repository
-git clone <YOUR_GIT_URL>
+git clone https://github.com/ArnavSharma2908/graph-verse-cycle-explorer-cfc21d3d.git
 
 # Step 2: Navigate into the project directory
-cd <YOUR_PROJECT_NAME>
+cd graph-verse-cycle-explorer-cfc21d3d
 
 # Step 3: Install all dependencies
 npm install
